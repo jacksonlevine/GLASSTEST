@@ -55,6 +55,7 @@ const demoGlassTints = {
 function App() {
   const [stageSize, setStageSize] = useState({ width: 1200, height: 760 });
   const [dragPosition, setDragPosition] = useState({ x: 44, y: 46 });
+  const dragPositionRef = useRef(dragPosition);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragSectionRef = useRef<HTMLElement | null>(null);
   const dragCardRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +65,9 @@ function App() {
     startY: number;
     originX: number;
     originY: number;
+    inset: number;
+    maxX: number;
+    maxY: number;
   } | null>(null);
   const displacement = 1;
   const tints = demoGlassTints;
@@ -119,7 +123,11 @@ function App() {
     if (!section || !card) return;
 
     const syncDragBounds = () => {
-      setDragPosition((position) => clampDragPosition(position.x, position.y));
+      setDragPosition((position) => {
+        const clampedPosition = clampDragPosition(position.x, position.y);
+        dragPositionRef.current = clampedPosition;
+        return clampedPosition;
+      });
     };
 
     syncDragBounds();
@@ -136,12 +144,23 @@ function App() {
     } catch {
       // Browser-owned pointer capture is not available for synthetic checks.
     }
+    const section = dragSectionRef.current;
+    const card = dragCardRef.current;
+    const inset = 16;
+    const maxX =
+      section && card ? Math.max(inset, section.clientWidth - card.offsetWidth - inset) : Number.POSITIVE_INFINITY;
+    const maxY =
+      section && card ? Math.max(inset, section.clientHeight - card.offsetHeight - inset) : Number.POSITIVE_INFINITY;
+    const origin = dragPositionRef.current;
     dragStateRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      originX: dragPosition.x,
-      originY: dragPosition.y,
+      originX: origin.x,
+      originY: origin.y,
+      inset,
+      maxX,
+      maxY,
     };
   };
 
@@ -149,17 +168,20 @@ function App() {
     const dragState = dragStateRef.current;
     if (!dragState || dragState.pointerId !== event.pointerId) return;
 
-    setDragPosition(
-      clampDragPosition(
-        dragState.originX + event.clientX - dragState.startX,
-        dragState.originY + event.clientY - dragState.startY,
-      ),
-    );
+    const nextPosition = {
+      x: Math.min(Math.max(dragState.inset, dragState.originX + event.clientX - dragState.startX), dragState.maxX),
+      y: Math.min(Math.max(dragState.inset, dragState.originY + event.clientY - dragState.startY), dragState.maxY),
+    };
+    dragPositionRef.current = nextPosition;
+    if (dragCardRef.current) {
+      dragCardRef.current.style.transform = `translate3d(${nextPosition.x}px, ${nextPosition.y}px, 0)`;
+    }
   };
 
   const handleDragPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (dragStateRef.current?.pointerId !== event.pointerId) return;
     dragStateRef.current = null;
+    setDragPosition(dragPositionRef.current);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
