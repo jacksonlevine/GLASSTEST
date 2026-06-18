@@ -1,12 +1,10 @@
 import {
   StrictMode,
   createContext,
-  type Dispatch,
   forwardRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -37,12 +35,12 @@ type ShaderSettings = {
 
 const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
 const defaultShaderSettings: ShaderSettings = {
-  sourceBrightness: 1.16,
-  sourceContrast: 1.32,
-  finalBrightness: 1,
-  finalContrast: 1,
-  transmissionStrength: 1,
-  thicknessTintAmount: 1.35,
+  sourceBrightness: 0.61,
+  sourceContrast: 1.44,
+  finalBrightness: 1.54,
+  finalContrast: 1.06,
+  transmissionStrength: 1.56,
+  thicknessTintAmount: 0.38,
 };
 
 const demoGlassTints = {
@@ -57,7 +55,6 @@ const demoGlassTints = {
 function App() {
   const [stageSize, setStageSize] = useState({ width: 1200, height: 760 });
   const [dragPosition, setDragPosition] = useState({ x: 44, y: 46 });
-  const [shaderSettings, setShaderSettings] = useState(defaultShaderSettings);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragSectionRef = useRef<HTMLElement | null>(null);
   const dragCardRef = useRef<HTMLDivElement | null>(null);
@@ -175,7 +172,7 @@ function App() {
           ref={stageRef}
           backdropUrl={backdropUrl}
           textureSize={textureSize}
-          settings={shaderSettings}
+          settings={defaultShaderSettings}
         >
           <div className="home-page">
             <header className="home-nav">
@@ -189,8 +186,6 @@ function App() {
                 TypeScript
               </Glass>
             </header>
-
-            <TuningPanel settings={shaderSettings} onChange={setShaderSettings} />
 
             <section className="homepage-grid">
               <div className="hero-copy">
@@ -682,46 +677,6 @@ function makeBackgroundPngDataUrl(width: number, height: number) {
   context.restore();
 
   return canvas.toDataURL('image/png');
-}
-
-type TuningPanelProps = {
-  settings: ShaderSettings;
-  onChange: Dispatch<SetStateAction<ShaderSettings>>;
-};
-
-function TuningPanel({ settings, onChange }: TuningPanelProps) {
-  const controls = [
-    ['Source brightness', 'sourceBrightness', 0.4, 2.4, 0.01],
-    ['Source contrast', 'sourceContrast', 0.4, 2.6, 0.01],
-    ['Final brightness', 'finalBrightness', 0.4, 2.4, 0.01],
-    ['Final contrast', 'finalContrast', 0.4, 2.6, 0.01],
-    ['Transmission strength', 'transmissionStrength', 0, 2.4, 0.01],
-    ['Thickness tint amount', 'thicknessTintAmount', 0, 3.2, 0.01],
-  ] as const;
-
-  return (
-    <aside className="tuning-panel" aria-label="Glass tuning controls">
-      {controls.map(([label, key, min, max, step]) => (
-        <label className="tuning-control" key={key}>
-          <span>
-            {label}
-            <output>{settings[key].toFixed(2)}</output>
-          </span>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={settings[key]}
-            onChange={(event) => {
-              const value = Number(event.currentTarget.value);
-              onChange((current) => ({ ...current, [key]: value }));
-            }}
-          />
-        </label>
-      ))}
-    </aside>
-  );
 }
 
 type GlassProps = {

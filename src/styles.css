@@ -24,10 +24,6 @@ input {
   font: inherit;
 }
 
-input[type='range'] {
-  accent-color: #15191d;
-}
-
 .app-shell {
   width: 100vw;
   min-height: 100vh;
@@ -123,46 +119,6 @@ input[type='range'] {
 }
 
 .home-page > * {
-  min-width: 0;
-}
-
-.tuning-panel {
-  position: sticky;
-  top: 14px;
-  z-index: 8;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(132px, 1fr));
-  gap: 10px;
-  padding: 12px;
-  border-radius: 18px;
-  background: rgba(247, 238, 225, 0.92);
-  box-shadow: 0 16px 46px rgba(12, 16, 22, 0.18);
-}
-
-.tuning-control {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.tuning-control span {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  color: #15191d;
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.tuning-control output {
-  color: rgba(21, 25, 29, 0.62);
-  font-variant-numeric: tabular-nums;
-}
-
-.tuning-control input {
-  width: 100%;
   min-width: 0;
 }
 
@@ -526,12 +482,6 @@ input[type='range'] {
 
   .home-nav {
     grid-template-columns: auto 1fr;
-  }
-
-  .tuning-panel {
-    position: relative;
-    top: auto;
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .home-nav nav {
