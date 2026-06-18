@@ -1103,8 +1103,8 @@ void main() {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
   color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
-  float absorption = clamp(u_tintStrength * mix(0.62, 1.28, thickness), 0.0, 0.98);
-  vec3 transmission = mix(vec3(1.0), u_tintColor, absorption);
+  float opticalDepth = u_tintStrength * mix(0.18, 2.35, thickness);
+  vec3 transmission = pow(max(u_tintColor, vec3(0.001)), vec3(opticalDepth));
   color *= transmission;
   color += vec3(1.0, 0.86, 0.62) * bakedShine * mix(0.14, 0.42, thickness);
 
