@@ -1,0 +1,160 @@
+use anyhow::Context;
+use image::{ImageBuffer, Rgba};
+use std::{env, fs, path::PathBuf};
+
+const SIZE: u32 = 512;
+const IOR_AIR: f32 = 1.0;
+const IOR_GLASS: f32 = 1.48;
+
+#[derive(Clone, Copy)]
+enum Shape {
+    Pill,
+    RoundedSquare,
+    Droplet,
+    WavySheet,
+    ThickEdgeButton,
+    MoltenPanel,
+}
+
+impl Shape {
+    fn all() -> &'static [(&'static str, Shape)] {
+        &[
+            ("pill-card", Shape::Pill),
+            ("rounded-square-lens", Shape::RoundedSquare),
+            ("droplet", Shape::Droplet),
+            ("wavy-sheet", Shape::WavySheet),
+            ("thick-edge-button", Shape::ThickEdgeButton),
+            ("molten-panel", Shape::MoltenPanel),
+        ]
+    }
+
+    fn height(self, x: f32, y: f32) -> f32 {
+        match self {
+            Shape::Pill => lens_from_sdf(rounded_box(x, y, 0.99, 0.99, 0.34), 0.13, 1.06),
+            Shape::RoundedSquare => lens_from_sdf(rounded_box(x, y, 0.99, 0.99, 0.2), 0.12, 1.04),
+            Shape::Droplet => {
+                let head = circle(x * 0.72, y + 0.04, 1.02);
+                let neck = rounded_box(x * 0.74, y - 0.48, 0.48, 0.62, 0.28);
+                let body = smooth_min(head, neck, 0.28);
+                let lean = 1.0 + 0.12 * x - 0.1 * y;
+                (lens_from_sdf(body, 0.12, 1.05) * lean).clamp(0.0, 1.0)
+            }
+            Shape::WavySheet => {
+                let base = lens_from_sdf(rounded_box(x, y, 1.0, 1.0, 0.08), 0.08, 1.02);
+                let ripple = 0.62
+                    + 0.2 * (x * 9.0 + y * 2.0).sin()
+                    + 0.12 * (y * 13.0 - x * 1.5).cos();
+                (base * ripple).clamp(0.0, 1.0)
+            }
+            Shape::ThickEdgeButton => {
+                let sdf = rounded_box(x, y, 0.99, 0.99, 0.28);
+                let body = lens_from_sdf(sdf, 0.1, 1.02);
+                let edge = (1.0 - (sdf.abs() / 0.12).clamp(0.0, 1.0)).powf(1.8);
+                (body * 0.58 + edge * 0.54).clamp(0.0, 1.0)
+            }
+            Shape::MoltenPanel => {
+                let wobble_x = x + 0.04 * (y * 8.0).sin() + 0.025 * (y * 17.0).cos();
+                let wobble_y = y + 0.035 * (x * 7.0).cos();
+                let sdf = rounded_box(wobble_x, wobble_y, 1.0, 1.0, 0.18);
+                let base = lens_from_sdf(sdf, 0.12, 1.02);
+                let swirl = 0.85 + 0.15 * ((x * 11.0).sin() * (y * 9.0).cos());
+                (base * swirl).clamp(0.0, 1.0)
+            }
+        }
+    }
+}
+
+fn main() -> anyhow::Result<()> {
+    let out_dir = env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("../public/generated"));
+    fs::create_dir_all(&out_dir).with_context(|| format!("creating {}", out_dir.display()))?;
+
+    for (name, shape) in Shape::all() {
+        let mut img = ImageBuffer::from_pixel(SIZE, SIZE, Rgba([128, 128, 128, 255]));
+        for py in 0..SIZE {
+            for px in 0..SIZE {
+                let x = (px as f32 / (SIZE - 1) as f32) * 2.0 - 1.0;
+                let y = (py as f32 / (SIZE - 1) as f32) * 2.0 - 1.0;
+                let h = shape.height(x, y);
+                if h <= 0.001 {
+                    continue;
+                }
+
+                let e = 2.0 / SIZE as f32;
+                let dhdx = (shape.height(x + e, y) - shape.height(x - e, y)) / (2.0 * e);
+                let dhdy = (shape.height(x, y + e) - shape.height(x, y - e)) / (2.0 * e);
+                let normal = normalize([-dhdx * 0.42, -dhdy * 0.42, 1.0]);
+
+                let incoming = [0.0, 0.0, -1.0];
+                let entering = refract(incoming, normal, IOR_AIR / IOR_GLASS).unwrap_or(incoming);
+                let exiting = refract(entering, [0.0, 0.0, -1.0], IOR_GLASS / IOR_AIR).unwrap_or(entering);
+                let optical_depth = 0.04 + h * 0.18;
+                let dx = exiting[0] * optical_depth + normal[0] * h * 0.075;
+                let dy = exiting[1] * optical_depth + normal[1] * h * 0.075;
+
+                let red = encode_offset(dx, 2.3);
+                let green = encode_offset(dy, 2.3);
+                img.put_pixel(px, py, Rgba([red, green, 128, 255]));
+            }
+        }
+
+        let path = out_dir.join(format!("{name}.png"));
+        img.save(&path).with_context(|| format!("saving {}", path.display()))?;
+        println!("baked {}", path.display());
+    }
+
+    Ok(())
+}
+
+fn encode_offset(v: f32, gain: f32) -> u8 {
+    ((0.5 + v * gain).clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+fn lens_from_sdf(sdf: f32, feather: f32, crown: f32) -> f32 {
+    let inside = smoothstep(feather, -feather, sdf);
+    let crown_shape = (1.0 - (sdf / crown).abs().clamp(0.0, 1.0).powf(2.0)).max(0.0);
+    inside * crown_shape.sqrt()
+}
+
+fn circle(x: f32, y: f32, r: f32) -> f32 {
+    (x * x + y * y).sqrt() - r
+}
+
+fn rounded_box(x: f32, y: f32, hx: f32, hy: f32, r: f32) -> f32 {
+    let qx = x.abs() - hx + r;
+    let qy = y.abs() - hy + r;
+    let ox = qx.max(0.0);
+    let oy = qy.max(0.0);
+    (ox * ox + oy * oy).sqrt() + qx.max(qy).min(0.0) - r
+}
+
+fn smooth_min(a: f32, b: f32, k: f32) -> f32 {
+    let h = (0.5 + 0.5 * (b - a) / k).clamp(0.0, 1.0);
+    b * h + a * (1.0 - h) - k * h * (1.0 - h)
+}
+
+fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+    let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+fn normalize(v: [f32; 3]) -> [f32; 3] {
+    let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(0.0001);
+    [v[0] / l, v[1] / l, v[2] / l]
+}
+
+fn refract(i: [f32; 3], n: [f32; 3], eta: f32) -> Option<[f32; 3]> {
+    let dot = i[0] * n[0] + i[1] * n[1] + i[2] * n[2];
+    let k = 1.0 - eta * eta * (1.0 - dot * dot);
+    if k < 0.0 {
+        None
+    } else {
+        Some([
+            eta * i[0] - (eta * dot + k.sqrt()) * n[0],
+            eta * i[1] - (eta * dot + k.sqrt()) * n[1],
+            eta * i[2] - (eta * dot + k.sqrt()) * n[2],
+        ])
+    }
+}
