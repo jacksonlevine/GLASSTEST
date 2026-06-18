@@ -1100,7 +1100,8 @@ void main() {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
   color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
-  color = mix(color, u_tintColor, u_tintStrength * mix(0.48, 1.0, material));
+  vec3 transmission = mix(vec3(1.0), u_tintColor, u_tintStrength * mix(0.48, 1.0, material));
+  color *= transmission;
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
 }
