@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
     fs::create_dir_all(&out_dir).with_context(|| format!("creating {}", out_dir.display()))?;
 
     for (name, shape) in Shape::all() {
-        let mut img = ImageBuffer::from_pixel(SIZE, SIZE, Rgba([128, 128, 128, 255]));
+        let mut img = ImageBuffer::from_pixel(SIZE, SIZE, Rgba([128, 128, 0, 0]));
         for py in 0..SIZE {
             for px in 0..SIZE {
                 let x = (px as f32 / (SIZE - 1) as f32) * 2.0 - 1.0;
@@ -96,7 +96,9 @@ fn main() -> anyhow::Result<()> {
 
                 let red = encode_offset(dx, 2.3);
                 let green = encode_offset(dy, 2.3);
-                img.put_pixel(px, py, Rgba([red, green, 128, 255]));
+                let thickness = encode_unit((h * 1.18).powf(1.35));
+                let shine = encode_unit(baked_shine(x, y, normal, h));
+                img.put_pixel(px, py, Rgba([red, green, thickness, shine]));
             }
         }
 
@@ -110,6 +112,33 @@ fn main() -> anyhow::Result<()> {
 
 fn encode_offset(v: f32, gain: f32) -> u8 {
     ((0.5 + v * gain).clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+fn encode_unit(v: f32) -> u8 {
+    (v.clamp(0.0, 1.0) * 255.0).round() as u8
+}
+
+fn baked_shine(x: f32, y: f32, normal: [f32; 3], height: f32) -> f32 {
+    let view = normalize([0.0, 0.0, 1.0]);
+    let light = normalize([-0.42, -0.76, 1.0]);
+    let half_vector = normalize([
+        view[0] + light[0],
+        view[1] + light[1],
+        view[2] + light[2],
+    ]);
+    let specular = dot(normal, half_vector).max(0.0).powf(84.0);
+    let top_left = gaussian(x, y, -0.58, -0.72, 0.2, 0.09);
+    let shoulder = gaussian(x, y, -0.36, -0.58, 0.52, 0.055);
+    let vertical_streak = gaussian(x, y, -0.32, -0.02, 0.035, 0.78) * 0.38;
+    let rim = smoothstep(0.18, 0.0, (x.abs().max(y.abs()) - 0.74).abs()) * 0.16;
+
+    (specular * 0.55 + top_left * 0.72 + shoulder * 0.36 + vertical_streak + rim) * height
+}
+
+fn gaussian(x: f32, y: f32, cx: f32, cy: f32, sx: f32, sy: f32) -> f32 {
+    let dx = (x - cx) / sx.max(0.0001);
+    let dy = (y - cy) / sy.max(0.0001);
+    (-0.5 * (dx * dx + dy * dy)).exp()
 }
 
 fn lens_from_sdf(sdf: f32, feather: f32, crown: f32) -> f32 {
@@ -143,6 +172,10 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(0.0001);
     [v[0] / l, v[1] / l, v[2] / l]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
 fn refract(i: [f32; 3], n: [f32; 3], eta: f32) -> Option<[f32; 3]> {

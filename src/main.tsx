@@ -1077,7 +1077,10 @@ void main() {
     discard;
   }
 
-  vec2 displacement = texture2D(u_displacementMap, v_uv).rg - vec2(0.5);
+  vec4 mapSample = texture2D(u_displacementMap, v_uv);
+  vec2 displacement = mapSample.rg - vec2(0.5);
+  float thickness = mapSample.b;
+  float bakedShine = mapSample.a;
   float edgeDistance = min(min(v_uv.x, 1.0 - v_uv.x), min(v_uv.y, 1.0 - v_uv.y));
   float outerGlass = 1.0 - smoothstep(0.0, 0.16, edgeDistance);
   float innerBevel = smoothstep(0.035, 0.10, edgeDistance) * (1.0 - smoothstep(0.16, 0.28, edgeDistance));
@@ -1100,8 +1103,10 @@ void main() {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
   color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
-  vec3 transmission = mix(vec3(1.0), u_tintColor, u_tintStrength);
+  float absorption = clamp(u_tintStrength * mix(0.62, 1.28, thickness), 0.0, 0.98);
+  vec3 transmission = mix(vec3(1.0), u_tintColor, absorption);
   color *= transmission;
+  color += vec3(1.0, 0.82, 0.52) * bakedShine * mix(0.22, 0.74, thickness);
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
 }
