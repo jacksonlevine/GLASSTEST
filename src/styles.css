@@ -56,7 +56,7 @@ input {
   padding: clamp(22px, 4vw, 42px);
   border-radius: var(--corner-radius);
   color: #f7eee1;
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
   background: transparent;
   box-shadow: 0 24px 80px rgba(12, 16, 22, 0.28);
@@ -404,6 +404,7 @@ input {
   max-width: calc(100% - 32px);
   min-height: 250px;
   cursor: grab;
+  touch-action: none;
 }
 
 .drag-glass:active {
