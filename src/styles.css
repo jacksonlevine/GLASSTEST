@@ -62,7 +62,8 @@ input {
   box-shadow: 0 24px 80px rgba(12, 16, 22, 0.28);
   will-change: transform;
   min-width: 0;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .glass-card.is-floating {
@@ -104,6 +105,8 @@ input {
 .glass-card .glass-content h2,
 .glass-card .glass-content h3 {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .home-page {
