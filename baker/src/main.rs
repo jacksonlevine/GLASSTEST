@@ -40,7 +40,10 @@ impl Shape {
                 (lens_from_sdf(body, 0.12, 1.05) * lean).clamp(0.0, 1.0)
             }
             Shape::WavySheet => {
-                let base = lens_from_sdf(rounded_box(x, y, 1.0, 1.0, 0.08), 0.08, 1.02);
+                let old_base = lens_from_sdf(rounded_box(x, y, 1.0, 1.0, 0.08), 0.08, 1.02);
+                let smooth_center = smooth_rect_lens(x, y, 1.0, 1.0, 0.18);
+                let center_blend = center_patch_mask(x, y, 0.46, 0.92);
+                let base = old_base * (1.0 - center_blend) + smooth_center * center_blend;
                 let ripple = 0.62
                     + 0.2 * (x * 9.0 + y * 2.0).sin()
                     + 0.12 * (y * 13.0 - x * 1.5).cos();
@@ -210,6 +213,22 @@ fn slab_thickness_from_sdf(sdf: f32, edge_width: f32, base: f32, edge_gain: f32)
     let inside = smoothstep(0.04, -0.04, sdf);
     let rolled_edge = (1.0 - (sdf.abs() / edge_width).clamp(0.0, 1.0)).powf(1.65);
     (inside * (base + rolled_edge * edge_gain)).clamp(0.0, 1.0)
+}
+
+fn smooth_rect_lens(x: f32, y: f32, hx: f32, hy: f32, edge_width: f32) -> f32 {
+    let sx = (x.abs() / hx).clamp(0.0, 1.0);
+    let sy = (y.abs() / hy).clamp(0.0, 1.0);
+    let inside_x = 1.0 - smoothstep(1.0 - edge_width, 1.0, sx);
+    let inside_y = 1.0 - smoothstep(1.0 - edge_width, 1.0, sy);
+    let edge_roll = (inside_x * inside_y).powf(0.42);
+    let crown_x = 1.0 - sx.powf(2.35);
+    let crown_y = 1.0 - sy.powf(2.35);
+    (edge_roll * crown_x.max(0.0).powf(0.34) * crown_y.max(0.0).powf(0.34)).clamp(0.0, 1.0)
+}
+
+fn center_patch_mask(x: f32, y: f32, inner_radius: f32, outer_radius: f32) -> f32 {
+    let radius = ((x * x + y * y).sqrt()).clamp(0.0, 1.0);
+    1.0 - smoothstep(inner_radius, outer_radius, radius)
 }
 
 fn circle(x: f32, y: f32, r: f32) -> f32 {

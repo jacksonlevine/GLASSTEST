@@ -796,7 +796,15 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         gl.STATIC_DRAW,
       );
 
-      backdropTexture = createTexture(gl, backdropImage);
+      const rawBackdropTexture = createTexture(gl, backdropImage);
+      backdropTexture = createKawaseBlurredTexture(
+        gl,
+        rawBackdropTexture,
+        textureSize.width,
+        textureSize.height,
+        positionBuffer,
+      );
+      gl.deleteTexture(rawBackdropTexture);
       Object.values(shapes).forEach((shape, index) => {
         displacementTextures.set(shape.key, createTexture(gl, displacementImages[index]));
       });
@@ -1118,6 +1126,14 @@ float roundedRectMask(vec2 point, vec2 size, float radius) {
   return 1.0 - smoothstep(0.0, 1.25, distance);
 }
 
+vec3 sampleRefractedBackdrop(vec2 sourceUv, vec2 chroma) {
+  vec3 color;
+  color.r = texture2D(u_backdrop, fract(sourceUv + chroma)).r;
+  color.g = texture2D(u_backdrop, sourceUv).g;
+  color.b = texture2D(u_backdrop, fract(sourceUv - chroma)).b;
+  return color;
+}
+
 void main() {
   vec2 localPx = v_uv * u_sampleRect.zw;
   float mask = roundedRectMask(localPx, u_sampleRect.zw, u_radius);
@@ -1138,12 +1154,9 @@ void main() {
   vec2 sourcePx = basePx + displacement * u_strengthPx * opticalWeight;
   vec2 sourceUv = fract(sourcePx / u_textureSize);
 
-  vec2 chromaPx = normalize(displacement + vec2(0.0001)) * mix(0.2, 3.6, max(bend, outerGlass));
+  vec2 chromaPx = normalize(displacement + vec2(0.0001)) * mix(0.12, 1.45, max(bend * 0.72, outerGlass));
   vec2 chroma = chromaPx / u_textureSize;
-  vec3 color;
-  color.r = texture2D(u_backdrop, fract(sourceUv + chroma)).r;
-  color.g = texture2D(u_backdrop, sourceUv).g;
-  color.b = texture2D(u_backdrop, fract(sourceUv - chroma)).b;
+  vec3 color = sampleRefractedBackdrop(sourceUv, chroma);
 
   float material = clamp(0.34 + outerGlass * 0.5 + innerBevel * 0.28 + bend * 0.18, 0.0, 1.0);
   float sourceLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -1157,6 +1170,41 @@ void main() {
   color = clamp(color * u_finalBrightness, 0.0, 1.0);
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
+}
+`;
+
+const kawaseVertexSource = `
+precision highp float;
+
+attribute vec2 a_position;
+varying vec2 v_uv;
+
+void main() {
+  v_uv = a_position;
+  vec2 clipPosition = a_position * 2.0 - 1.0;
+  gl_Position = vec4(clipPosition, 0.0, 1.0);
+}
+`;
+
+const kawaseFragmentSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+
+uniform sampler2D u_source;
+uniform vec2 u_texelSize;
+uniform float u_offset;
+varying vec2 v_uv;
+
+void main() {
+  vec2 offset = u_texelSize * u_offset;
+  vec4 color = texture2D(u_source, v_uv + vec2(offset.x, offset.y));
+  color += texture2D(u_source, v_uv + vec2(-offset.x, offset.y));
+  color += texture2D(u_source, v_uv + vec2(offset.x, -offset.y));
+  color += texture2D(u_source, v_uv + vec2(-offset.x, -offset.y));
+  gl_FragColor = color * 0.25;
 }
 `;
 
@@ -1216,6 +1264,82 @@ function createTexture(gl: WebGLRenderingContext, image: HTMLImageElement) {
   gl.bindTexture(gl.TEXTURE_2D, null);
 
   return texture;
+}
+
+function createRenderTexture(gl: WebGLRenderingContext, width: number, height: number) {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error('Unable to create WebGL render texture');
+
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+
+  return texture;
+}
+
+function createKawaseBlurredTexture(
+  gl: WebGLRenderingContext,
+  sourceTexture: WebGLTexture,
+  width: number,
+  height: number,
+  positionBuffer: WebGLBuffer,
+) {
+  const vertexShader = compileShader(gl, gl.VERTEX_SHADER, kawaseVertexSource);
+  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, kawaseFragmentSource);
+  const program = linkProgram(gl, vertexShader, fragmentShader);
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
+
+  const framebuffer = gl.createFramebuffer();
+  if (!framebuffer) throw new Error('Unable to create Kawase framebuffer');
+
+  const textureA = createRenderTexture(gl, width, height);
+  const textureB = createRenderTexture(gl, width, height);
+  const positionLocation = gl.getAttribLocation(program, 'a_position');
+  const sourceUniform = gl.getUniformLocation(program, 'u_source');
+  const texelSizeUniform = gl.getUniformLocation(program, 'u_texelSize');
+  const offsetUniform = gl.getUniformLocation(program, 'u_offset');
+  const offsets = [0.75];
+  let readTexture = sourceTexture;
+  let writeTexture = textureA;
+
+  gl.useProgram(program);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform1i(sourceUniform, 0);
+  gl.uniform2f(texelSizeUniform, 1 / width, 1 / height);
+  gl.viewport(0, 0, width, height);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+
+  offsets.forEach((offset, index) => {
+    writeTexture = index % 2 === 0 ? textureA : textureB;
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, writeTexture, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error('Kawase framebuffer is incomplete');
+    }
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, readTexture);
+    gl.uniform1f(offsetUniform, offset);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    readTexture = writeTexture;
+  });
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.deleteFramebuffer(framebuffer);
+  gl.deleteProgram(program);
+  if (readTexture === textureA) {
+    gl.deleteTexture(textureB);
+  } else {
+    gl.deleteTexture(textureA);
+  }
+
+  return readTexture;
 }
 
 createRoot(document.getElementById('root')!).render(
