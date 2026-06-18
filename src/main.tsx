@@ -19,6 +19,21 @@ import './styles.css';
 import { displacementMaps } from './generated/displacementMaps';
 import { ShapeKey, shapes } from './shapes';
 
+type GlassTint = {
+  color: string;
+  strength?: number;
+};
+
+const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
+const demoGlassTints = {
+  clear: { color: '#ffffff', strength: 0 },
+  arctic: { color: '#9bdcff', strength: 0.18 },
+  smoke: { color: '#101820', strength: 0.16 },
+  jade: { color: '#81e6c8', strength: 0.16 },
+  amber: { color: '#ffd166', strength: 0.14 },
+  rose: { color: '#ff8fab', strength: 0.13 },
+} satisfies Record<string, GlassTint>;
+
 function App() {
   const [stageSize, setStageSize] = useState({ width: 1200, height: 760 });
   const [dragPosition, setDragPosition] = useState({ x: 44, y: 46 });
@@ -33,6 +48,7 @@ function App() {
     originY: number;
   } | null>(null);
   const displacement = 1;
+  const tints = demoGlassTints;
   const textureSize = useMemo(
     () => ({
       width: Math.min(2048, Math.max(1024, Math.ceil(stageSize.width / 256) * 256)),
@@ -143,7 +159,7 @@ function App() {
                 <a href="#shader">WebGL</a>
                 <a href="#baker">Rust</a>
               </nav>
-              <Glass className="nav-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="nav-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 TypeScript
               </Glass>
             </header>
@@ -162,7 +178,7 @@ function App() {
                 </div>
               </div>
 
-              <Glass className="hero-panel" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="hero-panel" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <div className="card-title-row">
                   <span>Wavy sheet</span>
                   <span>React node</span>
@@ -177,7 +193,7 @@ function App() {
                 <p>The dev server is very proud of transforming this TypeScript into browser feelings.</p>
               </article>
 
-              <Glass className="metric-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="metric-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>02</span>
                 <h3>ResizeObserver fan club</h3>
                 <p>Every layout change files a report. WebGL accepts the report and draws a rectangle.</p>
@@ -189,13 +205,13 @@ function App() {
                 <p>WebGL cannot lick the DOM pixels. We feed it a texture like responsible adults.</p>
               </article>
 
-              <Glass className="wide-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="wide-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>04</span>
                 <h3>Fragment shader with opinions</h3>
                 <p>It samples the backdrop three times and insists the red channel go slightly elsewhere.</p>
               </Glass>
 
-              <Glass className="tall-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="tall-glass" shape="wavy-sheet" displacement={displacement} tint={tints.amber}>
                 <span>05</span>
                 <h3>PNG does vector math</h3>
                 <p>Red means shove X. Green means shove Y. Blue was not invited to the meeting.</p>
@@ -213,7 +229,7 @@ function App() {
                 <span className="eyebrow">Architecture announcement department</span>
                 <h2>One canvas has been appointed manager.</h2>
               </div>
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>API</span>
                 <h3>{'<Glass>'} signs the guestbook.</h3>
                 <p>It hands over an element ref, a shape name, and a displacement number. Very formal.</p>
@@ -236,7 +252,7 @@ function App() {
                 <h3>RAF custody agreement</h3>
                 <p>The visible image and shader scroll share one animation timestamp to avoid lying.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>10</span>
                 <h3>Readable, allegedly</h3>
                 <p>The shader lifts crushed shadows because text has filed several complaints.</p>
@@ -244,7 +260,7 @@ function App() {
             </section>
 
             <section className="color-band band-red">
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.rose}>
                 <span>Shader stack</span>
                 <h3>Displace, RGB split, apologize.</h3>
                 <p>No blur. No SVG filter. No specular. Just texture samples doing customer service.</p>
@@ -256,7 +272,7 @@ function App() {
             </section>
 
             <section className="story-grid" id="baker">
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>11</span>
                 <h3>Rust baker</h3>
                 <p>A tiny Rust program bakes lens maps, because JavaScript had already done enough.</p>
@@ -266,7 +282,7 @@ function App() {
                 <h3>Generated TypeScript</h3>
                 <p>The PNGs become data URLs, then pretend this was a normal frontend decision.</p>
               </article>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>13</span>
                 <h3>Shape swap</h3>
                 <p>Same div, different displacement map. The layout remains blissfully uninformed.</p>
@@ -283,7 +299,7 @@ function App() {
                 <span className="eyebrow">NPM package prophecy</span>
                 <h2>The API wants a scene and many needy children.</h2>
               </div>
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>Usage</span>
                 <h3>{'<GlassScene><Glass /></GlassScene>'}</h3>
                 <p>The parent owns the GPU situation. The children bring rectangles and confidence.</p>
@@ -296,7 +312,7 @@ function App() {
                 <h3>Performance model</h3>
                 <p>One GL context. One backdrop texture. Many quads. Fewer reasons for phones to panic.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>16</span>
                 <h3>Mobile target</h3>
                 <p>The shader does extra samples, but it avoids the animated SVG filter incident.</p>
@@ -313,7 +329,7 @@ function App() {
                 <span className="eyebrow">Uniform update disclosure</span>
                 <h2>The shader receives rectangles and refuses to be mysterious.</h2>
               </div>
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.amber}>
                 <span>18</span>
                 <h3>u_rect is the main character.</h3>
                 <p>Every glass element becomes x, y, width, height, and a quiet GPU obligation.</p>
@@ -321,7 +337,7 @@ function App() {
             </section>
 
             <section className="story-grid">
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>19</span>
                 <h3>Texture unit zero</h3>
                 <p>The backdrop lives there, answering every fragment shader question with a color.</p>
@@ -331,7 +347,7 @@ function App() {
                 <h3>Texture unit one</h3>
                 <p>The displacement map sits next door and suggests bad ideas for UV coordinates.</p>
               </article>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.rose}>
                 <span>21</span>
                 <h3>Three samples</h3>
                 <p>Red, green, and blue each get a slightly different sample because glass is dramatic.</p>
@@ -344,7 +360,7 @@ function App() {
             </section>
 
             <section className="color-band band-teal">
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>23</span>
                 <h3>The center calms down.</h3>
                 <p>Most of the heavy refraction is pushed toward edges so it reads more like glass.</p>
@@ -361,7 +377,7 @@ function App() {
                 <h3>React ref ceremony</h3>
                 <p>The forwarded ref is assigned, then the scene receives the element like paperwork.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>25</span>
                 <h3>Map stretch default</h3>
                 <p>The displacement PNG stretches to the element bounds, because that is the least annoying API.</p>
@@ -378,7 +394,7 @@ function App() {
                 <span className="eyebrow">Generated asset sermon</span>
                 <h2>The PNGs are baked, embedded, uploaded, and overexplained.</h2>
               </div>
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>27</span>
                 <h3>Rust did not ask for fame.</h3>
                 <p>It just produced red-green displacement fields and returned to the command line.</p>
@@ -386,7 +402,7 @@ function App() {
             </section>
 
             <section className="story-grid">
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.amber}>
                 <span>28</span>
                 <h3>ObjectBoundingBox who?</h3>
                 <p>SVG filter coordinate sadness is gone. This renderer speaks pixels now.</p>
@@ -396,7 +412,7 @@ function App() {
                 <h3>Device pixel ratio</h3>
                 <p>The canvas backs itself at DPR, capped so mobile hardware does not send a letter.</p>
               </article>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>30</span>
                 <h3>RAF loop</h3>
                 <p>One loop scrolls the visible backdrop and the shader sample window together.</p>
@@ -409,7 +425,7 @@ function App() {
             </section>
 
             <section className="color-band band-teal">
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.rose}>
                 <span>32</span>
                 <h3>Compositor monologue continues.</h3>
                 <p>The page is now mostly a dramatic reading of its own render pipeline.</p>
@@ -426,7 +442,7 @@ function App() {
                 <h3>Long layout audit</h3>
                 <p>The point of this section is proving the compositor survives a page that refuses to end.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>34</span>
                 <h3>Opaque refracted output</h3>
                 <p>This glass no longer blends with regular backdrop pixels. It outputs the processed sample.</p>
@@ -436,12 +452,12 @@ function App() {
                 <h3>CSS does placement</h3>
                 <p>Grid areas change; WebGL only receives new measured rectangles.</p>
               </article>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.clear}>
                 <span>36</span>
                 <h3>One draw call</h3>
                 <p>This card is another quad in the same shared renderer.</p>
               </Glass>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>37</span>
                 <h3>Organic map</h3>
                 <p>Same shader, different displacement texture, same overexplained stack joke.</p>
@@ -449,7 +465,7 @@ function App() {
             </section>
 
             <section className="color-band band-red">
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>38</span>
                 <h3>Alpha is not the trick.</h3>
                 <p>The glass patch is opaque in the compositor; only the sampled image is distorted.</p>
@@ -466,6 +482,7 @@ function App() {
                 className="drag-glass"
                 shape="wavy-sheet"
                 displacement={displacement}
+                tint={tints.arctic}
                 position={dragPosition}
                 onPointerDown={handleDragPointerDown}
                 onPointerMove={handleDragPointerMove}
@@ -479,7 +496,7 @@ function App() {
             </section>
 
             <section className="story-grid">
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>39</span>
                 <h3>Fragment stage</h3>
                 <p>The pixel either belongs to a registered glass quad or it does not. No halfway panel.</p>
@@ -489,7 +506,7 @@ function App() {
                 <h3>React keeps talking</h3>
                 <p>The component API remains mundane while the shader does all the theater.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>41</span>
                 <h3>Texture repeat fix</h3>
                 <p>The backdrop is now a capped tile, because giant page-height textures anger GPUs.</p>
@@ -506,7 +523,7 @@ function App() {
                 <span className="eyebrow">Still going</span>
                 <h2>The stack joke has acquired pagination energy.</h2>
               </div>
-              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="band-glass" shape="wavy-sheet" displacement={displacement} tint={tints.amber}>
                 <span>43</span>
                 <h3>Canvas stays one.</h3>
                 <p>The page gets longer, but the compositor does not multiply into per-card canvases.</p>
@@ -514,7 +531,7 @@ function App() {
             </section>
 
             <section className="story-grid">
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.rose}>
                 <span>44</span>
                 <h3>Uniforms again</h3>
                 <p>Scene size, texture size, scroll vector, rect, strength. The shader gets the paperwork.</p>
@@ -524,7 +541,7 @@ function App() {
                 <h3>DOM remains eligible</h3>
                 <p>Text selection, links, and layout do not become WebGL sprites.</p>
               </article>
-              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass large-story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.arctic}>
                 <span>46</span>
                 <h3>Data URL displacement</h3>
                 <p>The generated maps are embedded so the demo can upload textures without a fetch parade.</p>
@@ -534,7 +551,7 @@ function App() {
                 <h3>Browser boundary</h3>
                 <p>The browser will not hand arbitrary page pixels to WebGL, so the scene owns the backdrop.</p>
               </article>
-              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="story-glass" shape="wavy-sheet" displacement={displacement} tint={tints.jade}>
                 <span>48</span>
                 <h3>Endless cards</h3>
                 <p>Another glass rectangle registers itself, because apparently we are still doing this.</p>
@@ -547,7 +564,7 @@ function App() {
                 <h3>Current stack</h3>
                 <p>Vite, React, TypeScript, WebGL, Rust, PNGs, and a surprising amount of rectangles.</p>
               </article>
-              <Glass className="closing-glass" shape="wavy-sheet" displacement={displacement}>
+              <Glass className="closing-glass" shape="wavy-sheet" displacement={displacement} tint={tints.smoke}>
                 <span>50</span>
                 <h3>Final glass panel</h3>
                 <p>This panel would also like to mention it is registered into the shared compositor.</p>
@@ -643,6 +660,7 @@ type GlassProps = {
   shape?: ShapeKey;
   mode?: 'stretch';
   displacement?: number;
+  tint?: GlassTint;
   position?: { x: number; y: number };
   className?: string;
   style?: CSSProperties;
@@ -658,6 +676,12 @@ type GlassEntry = {
   element: HTMLDivElement;
   shape: ShapeKey;
   displacement: number;
+  tint: ResolvedGlassTint;
+};
+
+type ResolvedGlassTint = {
+  color: [number, number, number];
+  strength: number;
 };
 
 type GlassSceneContextValue = {
@@ -764,6 +788,8 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         radius: gl.getUniformLocation(program, 'u_radius'),
         scroll: gl.getUniformLocation(program, 'u_scroll'),
         strengthPx: gl.getUniformLocation(program, 'u_strengthPx'),
+        tintColor: gl.getUniformLocation(program, 'u_tintColor'),
+        tintStrength: gl.getUniformLocation(program, 'u_tintStrength'),
       };
 
       const render = (time: number) => {
@@ -846,6 +872,8 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
           gl.uniform4f(uniforms.sampleRect, sampleX, sampleY, glassRect.width, glassRect.height);
           gl.uniform1f(uniforms.radius, 28);
           gl.uniform1f(uniforms.strengthPx, 92 * glass.displacement);
+          gl.uniform3f(uniforms.tintColor, glass.tint.color[0], glass.tint.color[1], glass.tint.color[2]);
+          gl.uniform1f(uniforms.tintStrength, glass.tint.strength);
           gl.drawArrays(gl.TRIANGLES, 0, 6);
         }
 
@@ -895,6 +923,7 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
     shape = 'wavy-sheet',
     mode = 'stretch',
     displacement = 1,
+    tint = defaultGlassTint,
     position,
     className,
     style,
@@ -910,6 +939,7 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
   const scene = useContext(GlassSceneContext);
   const idRef = useRef(`glass-${nextGlassId += 1}`);
   const elementRef = useRef<HTMLDivElement | null>(null);
+  const resolvedTint = useMemo(() => resolveGlassTint(tint), [tint]);
   const glassStyle = position
     ? ({
         ...style,
@@ -937,12 +967,13 @@ export const Glass = forwardRef<HTMLDivElement, GlassProps>(function Glass(
       element,
       shape,
       displacement,
+      tint: resolvedTint,
     });
-  }, [displacement, scene, shape]);
+  }, [displacement, resolvedTint, scene, shape]);
 
   useLayoutEffect(() => {
-    scene?.updateGlass(idRef.current, { shape, displacement });
-  }, [displacement, scene, shape]);
+    scene?.updateGlass(idRef.current, { shape, displacement, tint: resolvedTint });
+  }, [displacement, resolvedTint, scene, shape]);
 
   return (
     <div
@@ -967,6 +998,38 @@ function assignForwardedRef<T>(ref: React.ForwardedRef<T>, value: T | null) {
   if (ref) {
     ref.current = value;
   }
+}
+
+function resolveGlassTint(tint: GlassTint): ResolvedGlassTint {
+  return {
+    color: parseHexColor(tint.color),
+    strength: clamp(tint.strength ?? 0, 0, 0.42),
+  };
+}
+
+function parseHexColor(color: string): [number, number, number] {
+  const normalized = color.trim().replace(/^#/, '');
+  const hex =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((character) => `${character}${character}`)
+          .join('')
+      : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return [1, 1, 1];
+  }
+
+  return [
+    Number.parseInt(hex.slice(0, 2), 16) / 255,
+    Number.parseInt(hex.slice(2, 4), 16) / 255,
+    Number.parseInt(hex.slice(4, 6), 16) / 255,
+  ];
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 const sceneVertexSource = `
@@ -995,6 +1058,8 @@ uniform vec4 u_sampleRect;
 uniform vec2 u_scroll;
 uniform float u_radius;
 uniform float u_strengthPx;
+uniform vec3 u_tintColor;
+uniform float u_tintStrength;
 varying vec2 v_uv;
 
 float roundedRectMask(vec2 point, vec2 size, float radius) {
@@ -1035,6 +1100,7 @@ void main() {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
   color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
+  color = mix(color, u_tintColor, u_tintStrength * mix(0.48, 1.0, material));
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
 }
