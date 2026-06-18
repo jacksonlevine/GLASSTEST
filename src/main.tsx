@@ -1106,7 +1106,7 @@ void main() {
   float absorption = clamp(u_tintStrength * mix(0.62, 1.28, thickness), 0.0, 0.98);
   vec3 transmission = mix(vec3(1.0), u_tintColor, absorption);
   color *= transmission;
-  color += vec3(1.0, 0.82, 0.52) * bakedShine * mix(0.22, 0.74, thickness);
+  color += vec3(1.0, 0.86, 0.62) * bakedShine * mix(0.14, 0.42, thickness);
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
 }

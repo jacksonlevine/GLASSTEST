@@ -118,21 +118,25 @@ fn encode_unit(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
-fn baked_shine(x: f32, y: f32, normal: [f32; 3], height: f32) -> f32 {
-    let view = normalize([0.0, 0.0, 1.0]);
-    let light = normalize([-0.42, -0.76, 1.0]);
-    let half_vector = normalize([
-        view[0] + light[0],
-        view[1] + light[1],
-        view[2] + light[2],
-    ]);
-    let specular = dot(normal, half_vector).max(0.0).powf(84.0);
-    let top_left = gaussian(x, y, -0.58, -0.72, 0.2, 0.09);
-    let shoulder = gaussian(x, y, -0.36, -0.58, 0.52, 0.055);
-    let vertical_streak = gaussian(x, y, -0.32, -0.02, 0.035, 0.78) * 0.38;
-    let rim = smoothstep(0.18, 0.0, (x.abs().max(y.abs()) - 0.74).abs()) * 0.16;
+fn baked_shine(x: f32, y: f32, _normal: [f32; 3], height: f32) -> f32 {
+    let top_edge = smoothstep(-0.98, -0.74, y) * (1.0 - smoothstep(-0.72, -0.48, y));
+    let left_edge = smoothstep(-0.98, -0.72, x) * (1.0 - smoothstep(-0.68, -0.42, x));
+    let right_edge = smoothstep(0.58, 0.78, x) * (1.0 - smoothstep(0.78, 0.98, x));
+    let corner_bloom = gaussian(x, y, -0.62, -0.7, 0.34, 0.16);
+    let upper_sweep = gaussian(x, y, -0.12, -0.68, 0.74, 0.055);
+    let vertical_catch = gaussian(x, y, -0.46, -0.08, 0.045, 0.82);
+    let opposing_edge = gaussian(x, y, 0.74, -0.02, 0.055, 0.72);
 
-    (specular * 0.55 + top_left * 0.72 + shoulder * 0.36 + vertical_streak + rim) * height
+    let shine =
+        corner_bloom * 0.28
+        + upper_sweep * 0.34
+        + vertical_catch * 0.22
+        + opposing_edge * 0.18
+        + top_edge * 0.18
+        + left_edge * 0.12
+        + right_edge * 0.1;
+
+    shine * smoothstep(0.08, 0.55, height)
 }
 
 fn gaussian(x: f32, y: f32, cx: f32, cy: f32, sx: f32, sy: f32) -> f32 {
@@ -172,10 +176,6 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(0.0001);
     [v[0] / l, v[1] / l, v[2] / l]
-}
-
-fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 }
 
 fn refract(i: [f32; 3], n: [f32; 3], eta: f32) -> Option<[f32; 3]> {
