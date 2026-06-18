@@ -810,7 +810,6 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         drawRect: gl.getUniformLocation(program, 'u_drawRect'),
         sampleRect: gl.getUniformLocation(program, 'u_sampleRect'),
         radius: gl.getUniformLocation(program, 'u_radius'),
-        scroll: gl.getUniformLocation(program, 'u_scroll'),
         strengthPx: gl.getUniformLocation(program, 'u_strengthPx'),
         tintColor: gl.getUniformLocation(program, 'u_tintColor'),
         tintStrength: gl.getUniformLocation(program, 'u_tintStrength'),
@@ -874,7 +873,6 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         gl.uniform1i(uniforms.backdrop, 0);
         gl.uniform2f(uniforms.viewportSize, viewportWidth, viewportHeight);
         gl.uniform2f(uniforms.textureSize, params.textureSize.width, params.textureSize.height);
-        gl.uniform2f(uniforms.scroll, scrollX, scrollY);
         gl.uniform1f(uniforms.sourceBrightness, currentSettings.sourceBrightness);
         gl.uniform1f(uniforms.sourceContrast, currentSettings.sourceContrast);
         gl.uniform1f(uniforms.finalBrightness, currentSettings.finalBrightness);
@@ -891,8 +889,8 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
           const glassDocumentY = glassRect.top + window.scrollY;
           const drawX = glassDocumentX - viewportPageLeft;
           const drawY = glassDocumentY - viewportPageTop;
-          const sampleX = glassDocumentX - sceneDocumentX;
-          const sampleY = glassDocumentY - sceneDocumentY;
+          const sampleX = positiveModulo(glassDocumentX - sceneDocumentX - scrollX, params.textureSize.width);
+          const sampleY = positiveModulo(glassDocumentY - sceneDocumentY - scrollY, params.textureSize.height);
           if (
             drawX > viewportWidth ||
             drawY > viewportHeight ||
@@ -1069,8 +1067,12 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function positiveModulo(value: number, divisor: number) {
+  return ((value % divisor) + divisor) % divisor;
+}
+
 const sceneVertexSource = `
-precision mediump float;
+precision highp float;
 
 attribute vec2 a_position;
 uniform vec2 u_viewportSize;
@@ -1086,13 +1088,16 @@ void main() {
 `;
 
 const sceneFragmentSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 
 uniform sampler2D u_backdrop;
 uniform sampler2D u_displacementMap;
 uniform vec2 u_textureSize;
 uniform vec4 u_sampleRect;
-uniform vec2 u_scroll;
 uniform float u_radius;
 uniform float u_strengthPx;
 uniform vec3 u_tintColor;
@@ -1129,7 +1134,7 @@ void main() {
   float bend = smoothstep(0.035, 0.18, length(displacement));
   float opticalWeight = clamp(0.42 + outerGlass * 2.15 + innerBevel * 0.9 + bend * 0.35, 0.0, 3.1);
 
-  vec2 basePx = u_sampleRect.xy + localPx - u_scroll;
+  vec2 basePx = u_sampleRect.xy + localPx;
   vec2 sourcePx = basePx + displacement * u_strengthPx * opticalWeight;
   vec2 sourceUv = fract(sourcePx / u_textureSize);
 
