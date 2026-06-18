@@ -27,11 +27,11 @@ type GlassTint = {
 const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
 const demoGlassTints = {
   clear: { color: '#ffffff', strength: 0 },
-  amberDark: { color: '#241000', strength: 0.88 },
-  amber: { color: '#6f2f00', strength: 0.78 },
-  red: { color: '#4c0008', strength: 0.82 },
-  blue: { color: '#001a5f', strength: 0.82 },
-  blueDark: { color: '#00091f', strength: 0.9 },
+  amberDark: { color: '#ff7608', strength: 0.95 },
+  amber: { color: '#ff9b18', strength: 0.84 },
+  red: { color: '#ff1a12', strength: 0.9 },
+  blue: { color: '#1467ff', strength: 0.88 },
+  blueDark: { color: '#0828ff', strength: 0.94 },
 } satisfies Record<string, GlassTint>;
 
 function App() {
@@ -1098,10 +1098,10 @@ void main() {
   color.b = texture2D(u_backdrop, fract(sourceUv - chroma)).b;
 
   float material = clamp(0.34 + outerGlass * 0.5 + innerBevel * 0.28 + bend * 0.18, 0.0, 1.0);
-  color = clamp((color - vec3(0.5)) * mix(1.06, 1.2, material) + vec3(0.5), 0.0, 1.0);
-  float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
-  color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
+  float sourceLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  color = mix(vec3(sourceLuminance), color, 1.24);
+  color = (color - vec3(0.5)) * mix(1.2, 1.42, material) + vec3(0.5);
+  color = clamp(color * 1.16, 0.0, 1.0);
   float opticalDepth = u_tintStrength * mix(0.07, 1.42, thickness);
   vec3 transmission = pow(max(u_tintColor, vec3(0.001)), vec3(opticalDepth));
   color *= transmission;
