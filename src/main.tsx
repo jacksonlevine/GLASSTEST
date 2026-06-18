@@ -1,10 +1,12 @@
 import {
   StrictMode,
   createContext,
+  type Dispatch,
   forwardRef,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
@@ -24,7 +26,25 @@ type GlassTint = {
   strength?: number;
 };
 
+type ShaderSettings = {
+  sourceBrightness: number;
+  sourceContrast: number;
+  finalBrightness: number;
+  finalContrast: number;
+  transmissionStrength: number;
+  thicknessTintAmount: number;
+};
+
 const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
+const defaultShaderSettings: ShaderSettings = {
+  sourceBrightness: 1.16,
+  sourceContrast: 1.32,
+  finalBrightness: 1,
+  finalContrast: 1,
+  transmissionStrength: 1,
+  thicknessTintAmount: 1.35,
+};
+
 const demoGlassTints = {
   clear: { color: '#ffffff', strength: 0 },
   amberDark: { color: '#ff7608', strength: 0.95 },
@@ -37,6 +57,7 @@ const demoGlassTints = {
 function App() {
   const [stageSize, setStageSize] = useState({ width: 1200, height: 760 });
   const [dragPosition, setDragPosition] = useState({ x: 44, y: 46 });
+  const [shaderSettings, setShaderSettings] = useState(defaultShaderSettings);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const dragSectionRef = useRef<HTMLElement | null>(null);
   const dragCardRef = useRef<HTMLDivElement | null>(null);
@@ -150,7 +171,12 @@ function App() {
   return (
     <>
       <main className="app-shell">
-        <GlassScene ref={stageRef} backdropUrl={backdropUrl} textureSize={textureSize}>
+        <GlassScene
+          ref={stageRef}
+          backdropUrl={backdropUrl}
+          textureSize={textureSize}
+          settings={shaderSettings}
+        >
           <div className="home-page">
             <header className="home-nav">
               <div className="brand-mark">GL</div>
@@ -163,6 +189,8 @@ function App() {
                 TypeScript
               </Glass>
             </header>
+
+            <TuningPanel settings={shaderSettings} onChange={setShaderSettings} />
 
             <section className="homepage-grid">
               <div className="hero-copy">
@@ -656,6 +684,46 @@ function makeBackgroundPngDataUrl(width: number, height: number) {
   return canvas.toDataURL('image/png');
 }
 
+type TuningPanelProps = {
+  settings: ShaderSettings;
+  onChange: Dispatch<SetStateAction<ShaderSettings>>;
+};
+
+function TuningPanel({ settings, onChange }: TuningPanelProps) {
+  const controls = [
+    ['Source brightness', 'sourceBrightness', 0.4, 2.4, 0.01],
+    ['Source contrast', 'sourceContrast', 0.4, 2.6, 0.01],
+    ['Final brightness', 'finalBrightness', 0.4, 2.4, 0.01],
+    ['Final contrast', 'finalContrast', 0.4, 2.6, 0.01],
+    ['Transmission strength', 'transmissionStrength', 0, 2.4, 0.01],
+    ['Thickness tint amount', 'thicknessTintAmount', 0, 3.2, 0.01],
+  ] as const;
+
+  return (
+    <aside className="tuning-panel" aria-label="Glass tuning controls">
+      {controls.map(([label, key, min, max, step]) => (
+        <label className="tuning-control" key={key}>
+          <span>
+            {label}
+            <output>{settings[key].toFixed(2)}</output>
+          </span>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={settings[key]}
+            onChange={(event) => {
+              const value = Number(event.currentTarget.value);
+              onChange((current) => ({ ...current, [key]: value }));
+            }}
+          />
+        </label>
+      ))}
+    </aside>
+  );
+}
+
 type GlassProps = {
   shape?: ShapeKey;
   mode?: 'stretch';
@@ -695,19 +763,20 @@ let nextGlassId = 0;
 type GlassSceneProps = {
   backdropUrl: string;
   textureSize: { width: number; height: number };
+  settings: ShaderSettings;
   children?: ReactNode;
 };
 
 export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function GlassScene(
-  { backdropUrl, textureSize, children },
+  { backdropUrl, textureSize, settings, children },
   forwardedRef,
 ) {
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
   const glassesRef = useRef(new Map<string, GlassEntry>());
-  const paramsRef = useRef({ textureSize });
-  paramsRef.current = { textureSize };
+  const paramsRef = useRef({ textureSize, settings });
+  paramsRef.current = { textureSize, settings };
 
   useImperativeHandle(forwardedRef, () => sceneRef.current as HTMLDivElement, []);
 
@@ -790,6 +859,12 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         strengthPx: gl.getUniformLocation(program, 'u_strengthPx'),
         tintColor: gl.getUniformLocation(program, 'u_tintColor'),
         tintStrength: gl.getUniformLocation(program, 'u_tintStrength'),
+        sourceBrightness: gl.getUniformLocation(program, 'u_sourceBrightness'),
+        sourceContrast: gl.getUniformLocation(program, 'u_sourceContrast'),
+        finalBrightness: gl.getUniformLocation(program, 'u_finalBrightness'),
+        finalContrast: gl.getUniformLocation(program, 'u_finalContrast'),
+        transmissionStrength: gl.getUniformLocation(program, 'u_transmissionStrength'),
+        thicknessTintAmount: gl.getUniformLocation(program, 'u_thicknessTintAmount'),
       };
 
       const render = (time: number) => {
@@ -825,6 +900,7 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         const scrollX = -620 * scrollAmount;
         const scrollY = -410 * scrollAmount;
         const params = paramsRef.current;
+        const currentSettings = params.settings;
         if (backdropRef.current) {
           backdropRef.current.style.backgroundPosition = `${scrollX}px ${scrollY}px`;
         }
@@ -844,6 +920,12 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         gl.uniform2f(uniforms.viewportSize, viewportWidth, viewportHeight);
         gl.uniform2f(uniforms.textureSize, params.textureSize.width, params.textureSize.height);
         gl.uniform2f(uniforms.scroll, scrollX, scrollY);
+        gl.uniform1f(uniforms.sourceBrightness, currentSettings.sourceBrightness);
+        gl.uniform1f(uniforms.sourceContrast, currentSettings.sourceContrast);
+        gl.uniform1f(uniforms.finalBrightness, currentSettings.finalBrightness);
+        gl.uniform1f(uniforms.finalContrast, currentSettings.finalContrast);
+        gl.uniform1f(uniforms.transmissionStrength, currentSettings.transmissionStrength);
+        gl.uniform1f(uniforms.thicknessTintAmount, currentSettings.thicknessTintAmount);
 
         for (const glass of glassesRef.current.values()) {
           const displacementTexture = displacementTextures.get(glass.shape);
@@ -1060,6 +1142,12 @@ uniform float u_radius;
 uniform float u_strengthPx;
 uniform vec3 u_tintColor;
 uniform float u_tintStrength;
+uniform float u_sourceBrightness;
+uniform float u_sourceContrast;
+uniform float u_finalBrightness;
+uniform float u_finalContrast;
+uniform float u_transmissionStrength;
+uniform float u_thicknessTintAmount;
 varying vec2 v_uv;
 
 float roundedRectMask(vec2 point, vec2 size, float radius) {
@@ -1100,11 +1188,13 @@ void main() {
   float material = clamp(0.34 + outerGlass * 0.5 + innerBevel * 0.28 + bend * 0.18, 0.0, 1.0);
   float sourceLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   color = mix(vec3(sourceLuminance), color, 1.24);
-  color = (color - vec3(0.5)) * mix(1.2, 1.42, material) + vec3(0.5);
-  color = clamp(color * 1.16, 0.0, 1.0);
-  float opticalDepth = u_tintStrength * mix(0.07, 1.42, thickness);
+  color = (color - vec3(0.5)) * u_sourceContrast + vec3(0.5);
+  color = clamp(color * u_sourceBrightness, 0.0, 1.0);
+  float opticalDepth = u_tintStrength * u_transmissionStrength * (0.07 + thickness * u_thicknessTintAmount);
   vec3 transmission = pow(max(u_tintColor, vec3(0.001)), vec3(opticalDepth));
   color *= transmission;
+  color = (color - vec3(0.5)) * u_finalContrast + vec3(0.5);
+  color = clamp(color * u_finalBrightness, 0.0, 1.0);
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
 }
