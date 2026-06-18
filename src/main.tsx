@@ -27,11 +27,11 @@ type GlassTint = {
 const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
 const demoGlassTints = {
   clear: { color: '#ffffff', strength: 0 },
-  amberDark: { color: '#4a2500', strength: 0.34 },
-  amber: { color: '#b45a05', strength: 0.32 },
-  red: { color: '#9b111e', strength: 0.34 },
-  blue: { color: '#0647b8', strength: 0.34 },
-  blueDark: { color: '#071a52', strength: 0.36 },
+  amberDark: { color: '#241000', strength: 0.88 },
+  amber: { color: '#6f2f00', strength: 0.78 },
+  red: { color: '#4c0008', strength: 0.82 },
+  blue: { color: '#001a5f', strength: 0.82 },
+  blueDark: { color: '#00091f', strength: 0.9 },
 } satisfies Record<string, GlassTint>;
 
 function App() {
@@ -1003,7 +1003,7 @@ function assignForwardedRef<T>(ref: React.ForwardedRef<T>, value: T | null) {
 function resolveGlassTint(tint: GlassTint): ResolvedGlassTint {
   return {
     color: parseHexColor(tint.color),
-    strength: clamp(tint.strength ?? 0, 0, 0.42),
+    strength: clamp(tint.strength ?? 0, 0, 0.95),
   };
 }
 
@@ -1100,7 +1100,7 @@ void main() {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   float shadowLift = 1.0 - smoothstep(0.22, 0.56, luminance);
   color += vec3(0.26) * shadowLift * mix(0.22, 0.48, material);
-  vec3 transmission = mix(vec3(1.0), u_tintColor, u_tintStrength * mix(0.48, 1.0, material));
+  vec3 transmission = mix(vec3(1.0), u_tintColor, u_tintStrength);
   color *= transmission;
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
