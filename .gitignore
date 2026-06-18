@@ -3,3 +3,4 @@ dist/
 .playwright-mcp/
 baker/target/
 *.png
+!public/outdoor-garden-backdrop.png

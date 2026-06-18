@@ -27,21 +27,31 @@ type GlassTint = {
 type ShaderSettings = {
   sourceBrightness: number;
   sourceContrast: number;
+  sourceSaturation: number;
   finalBrightness: number;
   finalContrast: number;
+  finalSaturation: number;
   transmissionStrength: number;
   thicknessTintAmount: number;
+  tintSaturation: number;
+  highlightTintProtection: number;
 };
 
 const defaultGlassTint: GlassTint = { color: '#ffffff', strength: 0 };
 const defaultShaderSettings: ShaderSettings = {
-  sourceBrightness: 0.61,
-  sourceContrast: 1.44,
-  finalBrightness: 1.54,
-  finalContrast: 1.06,
-  transmissionStrength: 1.56,
-  thicknessTintAmount: 0.38,
+  sourceBrightness: 0.7,
+  sourceContrast: 1.36,
+  sourceSaturation: 1.24,
+  finalBrightness: 2.12,
+  finalContrast: 1.02,
+  finalSaturation: 0.36,
+  transmissionStrength: 3,
+  thicknessTintAmount: 0.81,
+  tintSaturation: 0.88,
+  highlightTintProtection: 1,
 };
+const backdropUrl = `${import.meta.env.BASE_URL}outdoor-garden-backdrop.png`;
+const backdropTextureSize = { width: 1536, height: 1024 };
 
 const demoGlassTints = {
   clear: { color: '#ffffff', strength: 0 },
@@ -53,7 +63,6 @@ const demoGlassTints = {
 } satisfies Record<string, GlassTint>;
 
 function App() {
-  const [stageSize, setStageSize] = useState({ width: 1200, height: 760 });
   const [dragPosition, setDragPosition] = useState({ x: 44, y: 46 });
   const dragPositionRef = useRef(dragPosition);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -71,32 +80,6 @@ function App() {
   } | null>(null);
   const displacement = 1;
   const tints = demoGlassTints;
-  const textureSize = useMemo(
-    () => ({
-      width: Math.min(2048, Math.max(1024, Math.ceil(stageSize.width / 256) * 256)),
-      height: 2048,
-    }),
-    [stageSize.width],
-  );
-  const backdropUrl = useMemo(
-    () => makeBackgroundPngDataUrl(textureSize.width, textureSize.height),
-    [textureSize.width, textureSize.height],
-  );
-
-  useLayoutEffect(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const syncSize = () => {
-      const stageBounds = stage.getBoundingClientRect();
-      setStageSize({ width: stageBounds.width, height: stageBounds.height });
-    };
-
-    syncSize();
-    const resizeObserver = new ResizeObserver(syncSize);
-    resizeObserver.observe(stage);
-    return () => resizeObserver.disconnect();
-  }, []);
 
   const clampDragPosition = useCallback((x: number, y: number) => {
     const section = dragSectionRef.current;
@@ -193,7 +176,7 @@ function App() {
         <GlassScene
           ref={stageRef}
           backdropUrl={backdropUrl}
-          textureSize={textureSize}
+          textureSize={backdropTextureSize}
           settings={defaultShaderSettings}
         >
           <div className="home-page">
@@ -622,85 +605,6 @@ function App() {
   );
 }
 
-function makeBackgroundPngDataUrl(width: number, height: number) {
-  const safeWidth = Math.max(1, Math.round(width));
-  const safeHeight = Math.max(1, Math.round(height));
-  const canvas = document.createElement('canvas');
-  canvas.width = safeWidth;
-  canvas.height = safeHeight;
-  const context = canvas.getContext('2d');
-  if (!context) return '';
-
-  const stripeWidth = safeWidth / 5.8;
-  const colors = ['#de6657', '#ecc75c', '#58afa9', '#efe4d2', '#4f69b3', '#202734'];
-
-  const baseGradient = context.createLinearGradient(0, 0, safeWidth, safeHeight);
-  baseGradient.addColorStop(0, '#f4ead9');
-  baseGradient.addColorStop(0.42, '#efe3d0');
-  baseGradient.addColorStop(1, '#e0d8c8');
-  context.fillStyle = baseGradient;
-  context.fillRect(0, 0, safeWidth, safeHeight);
-
-  for (let index = 0; index < 10; index += 1) {
-    context.beginPath();
-    context.moveTo(index * stripeWidth - stripeWidth * 1.4, 0);
-    context.lineTo(index * stripeWidth + stripeWidth * 0.8, 0);
-    context.lineTo(index * stripeWidth - stripeWidth * 0.15, safeHeight);
-    context.lineTo(index * stripeWidth - stripeWidth * 2.35, safeHeight);
-    context.closePath();
-    context.fillStyle = colors[(index + 2) % colors.length];
-    context.fill();
-  }
-
-  context.save();
-  context.globalAlpha = 0.24;
-  context.strokeStyle = '#ffffff';
-  context.lineWidth = 1;
-  for (let x = -160; x <= safeWidth + 160; x += 82) {
-    context.beginPath();
-    context.moveTo(x, -40);
-    context.lineTo(x + safeHeight * 0.18, safeHeight + 40);
-    context.stroke();
-  }
-  for (let y = -120; y <= safeHeight + 120; y += 82) {
-    context.beginPath();
-    context.moveTo(-60, y);
-    context.lineTo(safeWidth + 60, y - safeWidth * 0.08);
-    context.stroke();
-  }
-  context.restore();
-
-  context.save();
-  context.globalAlpha = 0.22;
-  context.strokeStyle = '#ffffff';
-  context.lineWidth = 1.2;
-  for (let row = 0; row < Math.ceil(safeHeight / 150) + 2; row += 1) {
-    for (let column = 0; column < Math.ceil(safeWidth / 210) + 2; column += 1) {
-      const x = -80 + column * 210 + (row % 2) * 38;
-      const y = -80 + row * 150;
-      context.strokeRect(x, y, 136, 76);
-      context.beginPath();
-      context.moveTo(x + 14, y + 56);
-      context.bezierCurveTo(x + 48, y + 12, x + 88, y + 88, x + 124, y + 28);
-      context.stroke();
-    }
-  }
-  context.restore();
-
-  context.save();
-  context.fillStyle = 'rgba(21,25,29,.56)';
-  context.font = '800 11px Inter, Arial, sans-serif';
-  const labels = ['SURFACE', 'FIELD', 'VECTOR', 'LENS', 'MATERIAL'];
-  for (let row = 0; row < Math.ceil(safeHeight / 260) + 2; row += 1) {
-    for (let column = 0; column < Math.ceil(safeWidth / 360) + 2; column += 1) {
-      context.fillText(labels[(row + column) % labels.length], 36 + column * 360, 92 + row * 260);
-    }
-  }
-  context.restore();
-
-  return canvas.toDataURL('image/png');
-}
-
 type GlassProps = {
   shape?: ShapeKey;
   mode?: 'stretch';
@@ -845,10 +749,14 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         tintStrength: gl.getUniformLocation(program, 'u_tintStrength'),
         sourceBrightness: gl.getUniformLocation(program, 'u_sourceBrightness'),
         sourceContrast: gl.getUniformLocation(program, 'u_sourceContrast'),
+        sourceSaturation: gl.getUniformLocation(program, 'u_sourceSaturation'),
         finalBrightness: gl.getUniformLocation(program, 'u_finalBrightness'),
         finalContrast: gl.getUniformLocation(program, 'u_finalContrast'),
+        finalSaturation: gl.getUniformLocation(program, 'u_finalSaturation'),
         transmissionStrength: gl.getUniformLocation(program, 'u_transmissionStrength'),
         thicknessTintAmount: gl.getUniformLocation(program, 'u_thicknessTintAmount'),
+        tintSaturation: gl.getUniformLocation(program, 'u_tintSaturation'),
+        highlightTintProtection: gl.getUniformLocation(program, 'u_highlightTintProtection'),
       };
 
       const render = (time: number) => {
@@ -905,10 +813,14 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
         gl.uniform2f(uniforms.textureSize, params.textureSize.width, params.textureSize.height);
         gl.uniform1f(uniforms.sourceBrightness, currentSettings.sourceBrightness);
         gl.uniform1f(uniforms.sourceContrast, currentSettings.sourceContrast);
+        gl.uniform1f(uniforms.sourceSaturation, currentSettings.sourceSaturation);
         gl.uniform1f(uniforms.finalBrightness, currentSettings.finalBrightness);
         gl.uniform1f(uniforms.finalContrast, currentSettings.finalContrast);
+        gl.uniform1f(uniforms.finalSaturation, currentSettings.finalSaturation);
         gl.uniform1f(uniforms.transmissionStrength, currentSettings.transmissionStrength);
         gl.uniform1f(uniforms.thicknessTintAmount, currentSettings.thicknessTintAmount);
+        gl.uniform1f(uniforms.tintSaturation, currentSettings.tintSaturation);
+        gl.uniform1f(uniforms.highlightTintProtection, currentSettings.highlightTintProtection);
 
         for (const glass of glassesRef.current.values()) {
           const displacementTexture = displacementTextures.get(glass.shape);
@@ -1134,10 +1046,14 @@ uniform vec3 u_tintColor;
 uniform float u_tintStrength;
 uniform float u_sourceBrightness;
 uniform float u_sourceContrast;
+uniform float u_sourceSaturation;
 uniform float u_finalBrightness;
 uniform float u_finalContrast;
+uniform float u_finalSaturation;
 uniform float u_transmissionStrength;
 uniform float u_thicknessTintAmount;
+uniform float u_tintSaturation;
+uniform float u_highlightTintProtection;
 varying vec2 v_uv;
 
 float roundedRectMask(vec2 point, vec2 size, float radius) {
@@ -1154,6 +1070,11 @@ vec3 sampleRefractedBackdrop(vec2 sourceUv, vec2 chroma) {
   color.g = texture2D(u_backdrop, sourceUv).g;
   color.b = texture2D(u_backdrop, fract(sourceUv - chroma)).b;
   return color;
+}
+
+vec3 saturateColor(vec3 color, float saturation) {
+  float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  return mix(vec3(luminance), color, saturation);
 }
 
 void main() {
@@ -1181,14 +1102,18 @@ void main() {
   vec3 color = sampleRefractedBackdrop(sourceUv, chroma);
 
   float material = clamp(0.34 + outerGlass * 0.5 + innerBevel * 0.28 + bend * 0.18, 0.0, 1.0);
-  float sourceLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  color = mix(vec3(sourceLuminance), color, 1.24);
+  color = saturateColor(color, u_sourceSaturation);
   color = (color - vec3(0.5)) * u_sourceContrast + vec3(0.5);
   color = clamp(color * u_sourceBrightness, 0.0, 1.0);
+  float preTintLuminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  float highlightProtection = smoothstep(0.48, 0.96, preTintLuminance) * u_highlightTintProtection;
   float opticalDepth = u_tintStrength * u_transmissionStrength * (0.07 + thickness * u_thicknessTintAmount);
-  vec3 transmission = pow(max(u_tintColor, vec3(0.001)), vec3(opticalDepth));
+  opticalDepth *= mix(1.0, 0.08, highlightProtection);
+  vec3 tintColor = saturateColor(u_tintColor, u_tintSaturation);
+  vec3 transmission = pow(max(tintColor, vec3(0.001)), vec3(opticalDepth));
   color *= transmission;
   color = (color - vec3(0.5)) * u_finalContrast + vec3(0.5);
+  color = saturateColor(color, u_finalSaturation);
   color = clamp(color * u_finalBrightness, 0.0, 1.0);
 
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), mask);
