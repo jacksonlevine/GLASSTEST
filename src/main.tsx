@@ -908,9 +908,7 @@ export const GlassScene = forwardRef<HTMLDivElement, GlassSceneProps>(function G
           gl.uniform4f(uniforms.drawRect, drawX, drawY, glassRect.width, glassRect.height);
           gl.uniform4f(uniforms.sampleRect, sampleX, sampleY, glassRect.width, glassRect.height);
           gl.uniform1f(uniforms.radius, 28);
-          const glassMinSize = Math.min(glassRect.width, glassRect.height);
-          const responsiveStrengthPx = Math.min(56, glassMinSize * 0.075);
-          gl.uniform1f(uniforms.strengthPx, responsiveStrengthPx * glass.displacement);
+          gl.uniform1f(uniforms.strengthPx, 92 * glass.displacement);
           gl.uniform3f(uniforms.tintColor, glass.tint.color[0], glass.tint.color[1], glass.tint.color[2]);
           gl.uniform1f(uniforms.tintStrength, glass.tint.strength);
           gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -1129,7 +1127,7 @@ void main() {
   float outerGlass = 1.0 - smoothstep(0.0, 0.16, edgeDistance);
   float innerBevel = smoothstep(0.035, 0.10, edgeDistance) * (1.0 - smoothstep(0.16, 0.28, edgeDistance));
   float bend = smoothstep(0.035, 0.18, length(displacement));
-  float opticalWeight = clamp(0.34 + outerGlass * 1.25 + innerBevel * 0.55 + bend * 0.28, 0.0, 1.85);
+  float opticalWeight = clamp(0.42 + outerGlass * 2.15 + innerBevel * 0.9 + bend * 0.35, 0.0, 3.1);
 
   vec2 basePx = u_sampleRect.xy + localPx - u_scroll;
   vec2 sourcePx = basePx + displacement * u_strengthPx * opticalWeight;
@@ -1204,6 +1202,7 @@ function createTexture(gl: WebGLRenderingContext, image: HTMLImageElement) {
 
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);

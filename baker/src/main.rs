@@ -62,45 +62,6 @@ impl Shape {
             }
         }
     }
-
-    fn solid_thickness(self, x: f32, y: f32) -> f32 {
-        match self {
-            Shape::Pill => {
-                let sdf = rounded_box(x, y, 0.99, 0.99, 0.34);
-                slab_thickness_from_sdf(sdf, 0.22, 0.46, 0.48)
-            }
-            Shape::RoundedSquare => {
-                let sdf = rounded_box(x, y, 0.99, 0.99, 0.2);
-                slab_thickness_from_sdf(sdf, 0.2, 0.44, 0.42)
-            }
-            Shape::Droplet => {
-                let head = circle(x * 0.72, y + 0.04, 1.02);
-                let neck = rounded_box(x * 0.74, y - 0.48, 0.48, 0.62, 0.28);
-                let body = smooth_min(head, neck, 0.28);
-                let lower_mass = smoothstep(-0.12, 0.72, y) * 0.16;
-                (slab_thickness_from_sdf(body, 0.24, 0.42, 0.5) + lower_mass).clamp(0.0, 1.0)
-            }
-            Shape::WavySheet => {
-                let sdf = rounded_box(x, y, 1.0, 1.0, 0.08);
-                let wave_depth = 0.08
-                    * (0.5
-                        + 0.5
-                            * ((x * 4.8 + y * 1.4).sin() * 0.55
-                                + (y * 5.2 - x * 0.9).cos() * 0.45));
-                (slab_thickness_from_sdf(sdf, 0.18, 0.42, 0.46) + wave_depth).clamp(0.0, 1.0)
-            }
-            Shape::ThickEdgeButton => {
-                let sdf = rounded_box(x, y, 0.99, 0.99, 0.28);
-                slab_thickness_from_sdf(sdf, 0.3, 0.42, 0.62)
-            }
-            Shape::MoltenPanel => {
-                let wobble_x = x + 0.04 * (y * 8.0).sin() + 0.025 * (y * 17.0).cos();
-                let wobble_y = y + 0.035 * (x * 7.0).cos();
-                let sdf = rounded_box(wobble_x, wobble_y, 1.0, 1.0, 0.18);
-                slab_thickness_from_sdf(sdf, 0.26, 0.44, 0.5)
-            }
-        }
-    }
 }
 
 fn main() -> anyhow::Result<()> {
@@ -111,7 +72,7 @@ fn main() -> anyhow::Result<()> {
     fs::create_dir_all(&out_dir).with_context(|| format!("creating {}", out_dir.display()))?;
 
     for (name, shape) in Shape::all() {
-        let mut img = ImageBuffer::from_pixel(SIZE, SIZE, Rgba([128, 128, 0, 0]));
+        let mut img = ImageBuffer::from_pixel(SIZE, SIZE, Rgba([128, 128, 128, 255]));
         for py in 0..SIZE {
             for px in 0..SIZE {
                 let x = (px as f32 / (SIZE - 1) as f32) * 2.0 - 1.0;
@@ -135,9 +96,7 @@ fn main() -> anyhow::Result<()> {
 
                 let red = encode_offset(dx, 2.3);
                 let green = encode_offset(dy, 2.3);
-                let thickness = encode_unit(trace_optical_thickness(*shape, x, y, h, entering) / 1.36);
-                let shine = 0;
-                img.put_pixel(px, py, Rgba([red, green, thickness, shine]));
+                img.put_pixel(px, py, Rgba([red, green, 128, 255]));
             }
         }
 
@@ -153,64 +112,10 @@ fn encode_offset(v: f32, gain: f32) -> u8 {
     ((0.5 + v * gain).clamp(0.0, 1.0) * 255.0).round() as u8
 }
 
-fn encode_unit(v: f32) -> u8 {
-    (v.clamp(0.0, 1.0) * 255.0).round() as u8
-}
-
-fn trace_optical_thickness(shape: Shape, x: f32, y: f32, front_height: f32, ray: [f32; 3]) -> f32 {
-    let solid = shape.solid_thickness(x, y);
-    if solid <= 0.001 || ray[2] >= -0.0001 {
-        return solid;
-    }
-
-    let front_z = front_surface_z(shape, x, y, front_height);
-    let mut low = 0.0;
-    let mut high = 2.4;
-
-    for _ in 0..8 {
-        let px = x + ray[0] * high;
-        let py = y + ray[1] * high;
-        let z = front_z + ray[2] * high;
-        if z <= back_surface_z(shape, px, py) {
-            break;
-        }
-        high *= 1.35;
-    }
-
-    for _ in 0..28 {
-        let mid = (low + high) * 0.5;
-        let px = x + ray[0] * mid;
-        let py = y + ray[1] * mid;
-        let z = front_z + ray[2] * mid;
-        if z > back_surface_z(shape, px, py) {
-            low = mid;
-        } else {
-            high = mid;
-        }
-    }
-
-    high
-}
-
-fn front_surface_z(shape: Shape, x: f32, y: f32, front_height: f32) -> f32 {
-    let solid = shape.solid_thickness(x, y);
-    back_surface_z(shape, x, y) + solid + front_height * 0.18
-}
-
-fn back_surface_z(shape: Shape, x: f32, y: f32) -> f32 {
-    -shape.solid_thickness(x, y) * 0.5
-}
-
 fn lens_from_sdf(sdf: f32, feather: f32, crown: f32) -> f32 {
     let inside = smoothstep(feather, -feather, sdf);
     let crown_shape = (1.0 - (sdf / crown).abs().clamp(0.0, 1.0).powf(2.0)).max(0.0);
     inside * crown_shape.sqrt()
-}
-
-fn slab_thickness_from_sdf(sdf: f32, edge_width: f32, base: f32, edge_gain: f32) -> f32 {
-    let inside = smoothstep(0.04, -0.04, sdf);
-    let rolled_edge = (1.0 - (sdf.abs() / edge_width).clamp(0.0, 1.0)).powf(1.65);
-    (inside * (base + rolled_edge * edge_gain)).clamp(0.0, 1.0)
 }
 
 fn circle(x: f32, y: f32, r: f32) -> f32 {
