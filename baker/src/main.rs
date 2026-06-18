@@ -136,7 +136,7 @@ fn main() -> anyhow::Result<()> {
                 let red = encode_offset(dx, 2.3);
                 let green = encode_offset(dy, 2.3);
                 let thickness = encode_unit(trace_optical_thickness(*shape, x, y, h, entering) / 1.36);
-                let shine = encode_unit(baked_shine(x, y, normal, h));
+                let shine = 0;
                 img.put_pixel(px, py, Rgba([red, green, thickness, shine]));
             }
         }
@@ -155,30 +155,6 @@ fn encode_offset(v: f32, gain: f32) -> u8 {
 
 fn encode_unit(v: f32) -> u8 {
     (v.clamp(0.0, 1.0) * 255.0).round() as u8
-}
-
-fn baked_shine(_x: f32, _y: f32, normal: [f32; 3], height: f32) -> f32 {
-    let view = [0.0, 0.0, 1.0];
-    let incident = [0.0, 0.0, -1.0];
-    let reflection = reflect(incident, normal);
-    let ndotv = dot(normal, view).clamp(0.0, 1.0);
-    let fresnel = 0.04 + 0.96 * (1.0 - ndotv).powf(5.0);
-
-    let window_key = soft_rect(reflection[0], reflection[1], -0.38, -0.44, 0.18, 0.72, 0.08);
-    let window_fill = soft_rect(reflection[0], reflection[1], 0.46, -0.18, 0.14, 0.58, 0.1);
-    let ceiling_strip = soft_rect(reflection[0], reflection[1], -0.08, -0.68, 0.86, 0.08, 0.06);
-    let broad_room = soft_rect(reflection[0], reflection[1], 0.02, -0.18, 0.82, 0.5, 0.32) * 0.16;
-    let grazing = smoothstep(0.78, 0.18, ndotv);
-    let body = smoothstep(0.05, 0.42, height);
-
-    let environment =
-        window_key * 0.72
-        + window_fill * 0.34
-        + ceiling_strip * 0.46
-        + broad_room
-        + grazing * 0.18;
-
-    (environment * (0.2 + fresnel * 1.65) * body).clamp(0.0, 1.0)
 }
 
 fn trace_optical_thickness(shape: Shape, x: f32, y: f32, front_height: f32, ray: [f32; 3]) -> f32 {
@@ -225,14 +201,6 @@ fn back_surface_z(shape: Shape, x: f32, y: f32) -> f32 {
     -shape.solid_thickness(x, y) * 0.5
 }
 
-fn soft_rect(x: f32, y: f32, cx: f32, cy: f32, hx: f32, hy: f32, feather: f32) -> f32 {
-    let dx = (x - cx).abs();
-    let dy = (y - cy).abs();
-    let sx = 1.0 - smoothstep(hx, hx + feather, dx);
-    let sy = 1.0 - smoothstep(hy, hy + feather, dy);
-    sx * sy
-}
-
 fn lens_from_sdf(sdf: f32, feather: f32, crown: f32) -> f32 {
     let inside = smoothstep(feather, -feather, sdf);
     let crown_shape = (1.0 - (sdf / crown).abs().clamp(0.0, 1.0).powf(2.0)).max(0.0);
@@ -270,15 +238,6 @@ fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
 fn normalize(v: [f32; 3]) -> [f32; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt().max(0.0001);
     [v[0] / l, v[1] / l, v[2] / l]
-}
-
-fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
-    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-}
-
-fn reflect(i: [f32; 3], n: [f32; 3]) -> [f32; 3] {
-    let k = 2.0 * dot(i, n);
-    [i[0] - k * n[0], i[1] - k * n[1], i[2] - k * n[2]]
 }
 
 fn refract(i: [f32; 3], n: [f32; 3], eta: f32) -> Option<[f32; 3]> {
