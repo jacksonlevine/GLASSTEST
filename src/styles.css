@@ -24,6 +24,10 @@ input {
   font: inherit;
 }
 
+input[type="range"] {
+  accent-color: #15191d;
+}
+
 .app-shell {
   width: 100vw;
   min-height: 100vh;
@@ -46,6 +50,107 @@ input {
   z-index: 0;
   background-repeat: repeat;
   will-change: background-position;
+}
+
+.shader-panel {
+  position: sticky;
+  top: 12px;
+  z-index: 10;
+  width: min(1240px, calc(100% - 32px));
+  margin: 16px auto 0;
+  padding: 14px 16px;
+  border-radius: var(--corner-radius);
+  background: rgba(247, 238, 225, 0.84);
+  box-shadow: 0 18px 50px rgba(12, 16, 22, 0.18);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.shader-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shader-panel-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 220px;
+  border: 0;
+  padding: 0;
+  color: rgba(18, 23, 28, 0.9);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.1;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.shader-panel-toggle span,
+.shader-preset span {
+  color: rgba(18, 23, 28, 0.58);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.shader-preset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+}
+
+.shader-preset select {
+  width: 100%;
+  border: 1px solid rgba(18, 23, 28, 0.2);
+  border-radius: 999px;
+  padding: 7px 12px;
+  color: rgba(18, 23, 28, 0.86);
+  background: rgba(255, 250, 240, 0.72);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.shader-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 12px 16px;
+  margin-top: 14px;
+}
+
+.shader-control {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shader-control-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(18, 23, 28, 0.86);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.shader-control-label strong {
+  color: rgba(18, 23, 28, 0.58);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.shader-control input {
+  width: 100%;
 }
 
 .glass-card {
@@ -356,6 +461,35 @@ input {
   color: rgba(247, 238, 225, 0.74);
 }
 
+.glass-card.plain-card,
+.glass-card.plain-card.coral-card,
+.glass-card.plain-card.yellow-card,
+.glass-card.plain-card.blue-card,
+.glass-card.plain-card.dark-card {
+  background: transparent;
+  color: #f7eee1;
+  box-shadow: 0 24px 80px rgba(12, 16, 22, 0.28);
+}
+
+.glass-card.plain-card span,
+.glass-card.plain-card h3,
+.glass-card.plain-card p,
+.glass-card.plain-card.blue-card span,
+.glass-card.plain-card.blue-card p,
+.glass-card.plain-card.dark-card span,
+.glass-card.plain-card.dark-card p {
+  color: rgba(255, 250, 240, 0.94);
+}
+
+.glass-card.plain-card h3 {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+}
+
+.glass-card.plain-card p {
+  color: rgba(255, 250, 240, 0.82);
+  text-shadow: 0 1px 2px rgba(8, 12, 16, 0.38);
+}
+
 .card-title-row {
   display: flex;
   justify-content: space-between;
@@ -369,13 +503,17 @@ input {
 .color-band {
   position: relative;
   z-index: 2;
+  min-height: 420px;
+  padding: clamp(24px, 5vw, 64px);
+  border-radius: var(--corner-radius);
+  min-width: 0;
+}
+
+.color-band > .glass-content {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.72fr);
   align-items: stretch;
   gap: 18px;
-  min-height: 420px;
-  padding: clamp(24px, 5vw, 64px);
-  border-radius: var(--corner-radius);
   min-width: 0;
 }
 
@@ -418,12 +556,16 @@ input {
 }
 
 .band-teal {
-  background: #58afa9;
+  background: transparent;
 }
 
 .band-red {
   grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1fr);
-  background: #de6657;
+  background: transparent;
+}
+
+.band-red > .glass-content {
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1fr);
 }
 
 .band-glass {
@@ -474,6 +616,27 @@ input {
   .app-shell {
     min-height: 100vh;
     padding: 10px;
+  }
+
+  .shader-panel {
+    width: calc(100% - 24px);
+    margin-top: 12px;
+    padding: 12px;
+  }
+
+  .shader-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .shader-panel-toggle,
+  .shader-preset {
+    width: 100%;
+  }
+
+  .shader-panel-grid {
+    grid-template-columns: 1fr;
   }
 
   .stage {
@@ -538,6 +701,11 @@ input {
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
     max-width: 100%;
+  }
+
+  .color-band > .glass-content,
+  .band-red > .glass-content {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .color-band h2 {
